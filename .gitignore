@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+venv/
+.venv/
+.pytest_cache/
+.coverage
+
+# Environment
+.env
+
+# Logs
+*.log
+outputs/
+
+# Data
+data/
+
+# VS Code
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+*.db
