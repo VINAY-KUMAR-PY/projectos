@@ -328,3 +328,41 @@ The workspace will contain:
 - Center area: active tool/editor
 - Right sidebar: AI assistant
 - Top bar: project status, export, deploy, share
+
+## 10. Subscription System
+
+ProjectOS will use a freemium SaaS model.
+
+### 10.1 Plans
+
+| Plan | Target Users | Features |
+|---|---|---|
+| Free | New users | Limited projects, limited AI requests, watermarked exports. |
+| Student | Students | More projects, PDF/DOCX/PPT exports, viva preparation, code generation. |
+| Pro | Developers, freelancers, founders | Premium AI, large projects, advanced exports, deployment help, debugging. |
+| Team/College | Teams and institutions | Team workspace, faculty dashboard, collaboration, admin controls. |
+
+### 10.2 Usage Limits
+
+Limits may include:
+
+- Number of projects
+- AI requests per month
+- File upload size
+- Video upload minutes
+- Export count
+- Storage limit
+- Team members
+
+### 10.3 Payment Providers
+
+MVP:
+
+- Razorpay for India
+- Stripe for global users
+
+Future:
+
+- PayPal
+- UPI
+- College/institution invoicing
