@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from app.config.settings import settings
+from app.api.ai import router as ai_router
 from app.api.auth import router as auth_router
 from app.api.errors import http_exception_handler, validation_exception_handler
 from app.api.workspaces import router as workspace_router
@@ -24,6 +25,7 @@ app.add_exception_handler(HTTPException, http_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.include_router(auth_router)
 app.include_router(workspace_router)
+app.include_router(ai_router)
 
 @app.get("/")
 def home():

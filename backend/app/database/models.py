@@ -6,3 +6,4 @@ from app.models.workspace import (
     Task,
     Workspace,
 )
+from app.models.ai import AgentRun, Conversation, ConversationMessage
