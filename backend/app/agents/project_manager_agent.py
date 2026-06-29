@@ -1,6 +1,6 @@
-from agents.requirement_agent import RequirementAgent
-from core.memory import MemoryEngine
-from core.router import AgentRouter
+from app.agents.requirement_agent import RequirementAgent
+from app.core.memory import MemoryEngine
+from app.core.router import AgentRouter
 
 
 class ProjectManagerAgent:

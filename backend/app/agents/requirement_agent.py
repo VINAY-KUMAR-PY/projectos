@@ -1,4 +1,4 @@
-from core.base_agent import BaseAgent
+from app.core.base_agent import BaseAgent
 
 class RequirementAgent(BaseAgent):
     def __init__(self):

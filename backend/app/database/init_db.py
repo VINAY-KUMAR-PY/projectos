@@ -1,4 +1,4 @@
-from database.connection import engine, Base
+from app.database.connection import engine, Base
 from database import models
 
 
