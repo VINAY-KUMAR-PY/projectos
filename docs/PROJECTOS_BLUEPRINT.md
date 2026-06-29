@@ -412,3 +412,41 @@ For global users, ProjectOS should prepare for:
 - GDPR
 - SOC 2
 - Institution-level privacy requirements
+
+
+## 12. Deployment Plan
+
+ProjectOS should start simple and scale gradually.
+
+### 12.1 MVP Deployment
+
+For the first version:
+
+- Frontend: Vercel
+- Backend: Railway / Render
+- Database: Supabase PostgreSQL
+- File Storage: Supabase Storage
+- Repository: GitHub
+- Domain: Later, after beta testing
+
+### 12.2 Production Deployment
+
+For large-scale users:
+
+- Docker containers
+- PostgreSQL managed database
+- Object storage such as AWS S3
+- CDN for files
+- Background workers for file/video processing
+- Monitoring and logging
+- Automatic backups
+
+### 12.3 Local Development
+
+Developers can run ProjectOS locally using:
+
+- Python virtual environment
+- FastAPI backend
+- Local SQLite database
+- Local file storage
+- Docker support in the future
