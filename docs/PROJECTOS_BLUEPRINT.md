@@ -90,3 +90,42 @@ ProjectOS will use a modular architecture.
    - Student plan
    - Pro plan
    - Team/College plan
+   ## 6. AI Agent Design
+
+ProjectOS uses a multi-agent architecture. Each agent has one responsibility and communicates through the Project Manager Agent, Router, and Memory Engine.
+
+### 6.1 Core Agents
+
+| Agent | Responsibility |
+|---|---|
+| Project Manager Agent | Main orchestrator. Understands user goals and coordinates all agents. |
+| Requirement Analyzer Agent | Extracts requirements, features, constraints, and project scope. |
+| Research Agent | Researches technologies, competitors, references, datasets, and project feasibility. |
+| Architecture Agent | Designs system architecture, modules, folder structure, APIs, and database plan. |
+| Coding Agent | Generates, explains, reviews, and improves source code. |
+| Documentation Agent | Creates reports, abstracts, methodology, README, manuals, and academic documents. |
+| Diagram Agent | Creates UML, ER diagrams, flowcharts, architecture diagrams, and Gantt charts. |
+| Presentation Agent | Creates PPT content, speaker notes, demo scripts, and presentation flow. |
+| Testing Agent | Creates test cases, finds bugs, and checks quality. |
+| Deployment Agent | Provides deployment steps for Vercel, Netlify, Railway, Render, Docker, and cloud platforms. |
+| File & Video Intelligence Agent | Analyzes PDFs, DOCX, PPTX, Excel, screenshots, images, code ZIPs, audio, and videos. |
+| Learning & Viva Agent | Explains the project, prepares viva questions, quizzes, and interview answers. |
+
+### 6.2 Agent Workflow
+
+User Input → Project Manager Agent → Router → Specialist Agent → Memory Engine → Final Response
+
+### 6.3 Agent Output Format
+
+Every agent should return a standard response:
+
+```json
+{
+  "status": "success",
+  "agent": "Agent Name",
+  "task": "Task description",
+  "summary": "Short result summary",
+  "data": {},
+  "next_steps": [],
+  "confidence": 0.95
+}
