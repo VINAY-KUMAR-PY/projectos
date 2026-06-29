@@ -284,3 +284,47 @@ All APIs should return a consistent response format:
   "data": {},
   "errors": []
 }
+
+## 9. Frontend Design
+
+ProjectOS frontend will be built as a modern SaaS dashboard.
+
+### 9.1 Main Pages
+
+| Page | Purpose |
+|---|---|
+| Landing Page | Explain product, features, pricing, and signup. |
+| Dashboard | Show projects, recent activity, usage, and quick actions. |
+| Project Workspace | Main area to manage one project. |
+| AI Chat | Chat with ProjectOS agents. |
+| File Manager | Upload and manage files, screenshots, videos, and documents. |
+| Code Workspace | View generated code, folder structure, and README. |
+| Documentation Workspace | Edit reports, abstracts, methodology, and exports. |
+| Diagram Workspace | View UML, ER, flowcharts, and architecture diagrams. |
+| Presentation Workspace | Generate and edit PPT content. |
+| Settings | Manage profile, preferences, API keys, and billing. |
+
+### 9.2 Frontend Stack
+
+MVP:
+
+- Next.js
+- TypeScript
+- Tailwind CSS
+- shadcn/ui
+
+Future:
+
+- Monaco Editor for code editing
+- React Flow for diagrams
+- Liveblocks for real-time collaboration
+- Stripe/Razorpay billing UI
+
+### 9.3 Project Workspace Layout
+
+The workspace will contain:
+
+- Left sidebar: project navigation
+- Center area: active tool/editor
+- Right sidebar: AI assistant
+- Top bar: project status, export, deploy, share
