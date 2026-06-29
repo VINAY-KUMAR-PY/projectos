@@ -222,3 +222,65 @@ Production:
 - PostgreSQL
 - Supabase Storage or AWS S3
 - Qdrant or Pinecone for vector search
+
+
+## 8. API Design
+
+ProjectOS will expose REST APIs using FastAPI.
+
+### 8.1 Core API Groups
+
+| API Group | Purpose |
+|---|---|
+| Auth API | Signup, login, logout, user profile. |
+| Project API | Create, read, update, delete projects. |
+| Agent API | Run AI agents and get agent results. |
+| File API | Upload and analyze files. |
+| Video API | Upload and analyze videos. |
+| Memory API | Save and retrieve project memory. |
+| Output API | Export PDF, DOCX, PPTX, ZIP, README, diagrams. |
+| Subscription API | Manage plans, billing, credits, and usage. |
+
+### 8.2 Example Endpoints
+
+- POST /auth/signup
+- POST /auth/login
+- GET /users/me
+
+- POST /projects
+- GET /projects
+- GET /projects/{project_id}
+- PUT /projects/{project_id}
+- DELETE /projects/{project_id}
+
+- POST /agents/run
+- GET /agents
+- GET /agents/runs/{run_id}
+
+- POST /files/upload
+- POST /files/analyze
+- GET /files/{file_id}
+
+- POST /videos/upload
+- POST /videos/analyze
+- GET /videos/{video_id}
+
+- GET /memory/{project_id}
+- POST /memory/{project_id}
+
+- POST /exports/pdf
+- POST /exports/docx
+- POST /exports/pptx
+- POST /exports/zip
+
+### 8.3 API Response Format
+
+All APIs should return a consistent response format:
+
+```json
+{
+  "status": "success",
+  "message": "Request completed successfully",
+  "data": {},
+  "errors": []
+}
