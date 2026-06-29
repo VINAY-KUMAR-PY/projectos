@@ -501,3 +501,25 @@ Developers can run ProjectOS locally using:
 - Multi-model AI
 - Enterprise features
 - Mobile app
+
+## 14. Stage 1 Build Order
+
+The Stage 1 MVP should be built in this order:
+
+1. Configuration Manager
+2. FastAPI Backend
+3. SQLite Database
+4. Project API
+5. Agent API
+6. Memory API
+7. Documentation Agent
+8. Coding Agent
+9. Diagram Agent
+10. Presentation Agent
+11. File Upload API
+12. Basic Frontend Dashboard
+13. Authentication
+14. Subscription Prototype
+15. Deployment
+
+This order ensures that the platform foundation is stable before adding advanced AI features.
