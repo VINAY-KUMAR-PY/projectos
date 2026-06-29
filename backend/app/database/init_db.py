@@ -1,5 +1,6 @@
 from app.database.connection import engine, Base
-from database import models
+from app.database import models
+from app.models import user
 
 
 def init_db():
