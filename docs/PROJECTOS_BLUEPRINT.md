@@ -366,3 +366,49 @@ Future:
 - PayPal
 - UPI
 - College/institution invoicing
+
+
+## 11. Security & Privacy
+
+ProjectOS will handle sensitive user data such as project files, source code, documents, videos, and API keys. Security must be included from the beginning.
+
+### 11.1 Core Security Features
+
+- Secure authentication
+- Password hashing
+- Role-based access control
+- File access permissions
+- Environment variables for secrets
+- API key protection
+- Activity logging
+- Rate limiting
+- Data export
+- Data deletion
+
+### 11.2 File Security
+
+Uploaded files should be:
+
+- Validated by file type
+- Limited by file size
+- Scanned before processing
+- Stored securely
+- Linked only to the correct user and project
+
+### 11.3 Privacy Principles
+
+ProjectOS should:
+
+- Never expose private files publicly
+- Never commit secrets to GitHub
+- Allow users to delete their data
+- Clearly explain how AI uses uploaded content
+- Separate user data by workspace and project
+
+### 11.4 Future Compliance
+
+For global users, ProjectOS should prepare for:
+
+- GDPR
+- SOC 2
+- Institution-level privacy requirements
