@@ -129,3 +129,96 @@ Every agent should return a standard response:
   "next_steps": [],
   "confidence": 0.95
 }
+## 7. Database Design
+
+ProjectOS will use a relational database for structured data and a vector database for AI memory/search.
+
+### 7.1 Main Tables
+
+| Table | Purpose |
+|---|---|
+| users | Stores user account details. |
+| workspaces | Stores personal/team workspaces. |
+| projects | Stores project information. |
+| agents | Stores available AI agent metadata. |
+| agent_runs | Stores every agent execution log. |
+| project_memory | Stores structured project memory. |
+| conversations | Stores user-AI chat sessions. |
+| messages | Stores chat messages. |
+| files | Stores uploaded file metadata. |
+| videos | Stores uploaded video metadata and transcripts. |
+| generated_outputs | Stores generated docs, code, diagrams, PPTs, and exports. |
+| tasks | Stores project tasks and milestones. |
+| subscriptions | Stores user subscription plans. |
+| payments | Stores payment records. |
+| teams | Stores team information. |
+| team_members | Stores team member roles and permissions. |
+
+### 7.2 User Table
+
+Fields:
+
+- id
+- name
+- email
+- password_hash
+- role
+- subscription_plan
+- created_at
+- updated_at
+
+### 7.3 Project Table
+
+Fields:
+
+- id
+- user_id
+- workspace_id
+- title
+- description
+- status
+- tech_stack
+- deadline
+- created_at
+- updated_at
+
+### 7.4 File Table
+
+Fields:
+
+- id
+- project_id
+- file_name
+- file_type
+- file_url
+- file_size
+- extracted_text
+- summary
+- uploaded_at
+
+### 7.5 Agent Run Table
+
+Fields:
+
+- id
+- project_id
+- agent_name
+- task
+- input
+- output
+- status
+- confidence
+- execution_time
+- created_at
+
+### 7.6 Future Database Stack
+
+MVP:
+
+- SQLite
+
+Production:
+
+- PostgreSQL
+- Supabase Storage or AWS S3
+- Qdrant or Pinecone for vector search
