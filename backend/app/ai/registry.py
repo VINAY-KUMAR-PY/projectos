@@ -21,11 +21,15 @@ class ProviderRegistry:
             raise ValueError(f"Unknown AI provider: {name}")
         return self._providers[name]
 
-    def list(self) -> list[AIProvider]:
+    def list_providers(self) -> list[AIProvider]:
         return list(self._providers.values())
 
     def configured(self) -> list[AIProvider]:
-        return [provider for provider in self.list() if provider.info().configured]
+        return [
+            provider
+            for provider in self.list_providers()
+            if provider.info().configured
+        ]
 
 
 def create_provider_registry() -> ProviderRegistry:

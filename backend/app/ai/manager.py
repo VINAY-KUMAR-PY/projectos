@@ -25,7 +25,7 @@ class AIManager:
                 "configured": provider.info().configured,
                 "supports_local": provider.info().supports_local,
             }
-            for provider in self.registry.list()
+            for provider in self.registry.list_providers()
         ]
 
 
