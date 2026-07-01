@@ -37,6 +37,9 @@ class Project(Base):
     title = Column(String(255), nullable=False, index=True)
     description = Column(Text, nullable=True)
     status = Column(String(50), default="draft", index=True)
+    tech_stack = Column(Text, default="[]")
+    deadline = Column(DateTime(timezone=True), nullable=True)
+    progress_score = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), default=utc_now)
     updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 
@@ -45,6 +48,7 @@ class Project(Base):
     notes = relationship("Note", back_populates="project", cascade="all, delete-orphan")
     files = relationship("ProjectFile", back_populates="project", cascade="all, delete-orphan")
     memories = relationship("ProjectMemory", back_populates="project", cascade="all, delete-orphan")
+    outputs = relationship("GeneratedOutput", back_populates="project", cascade="all, delete-orphan")
 
 
 class Task(Base):
@@ -57,6 +61,8 @@ class Task(Base):
     description = Column(Text, nullable=True)
     status = Column(String(50), default="todo", index=True)
     priority = Column(String(50), default="medium", index=True)
+    assigned_to = Column(Integer, ForeignKey("users.id"), nullable=True)
+    due_date = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=utc_now)
     updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 
@@ -86,6 +92,8 @@ class ProjectFile(Base):
     file_name = Column(String(255), nullable=False, index=True)
     file_type = Column(String(100), nullable=True, index=True)
     storage_path = Column(String(500), nullable=False)
+    extracted_text = Column(Text, nullable=True)
+    summary = Column(Text, nullable=True)
     file_size = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), default=utc_now)
     updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
@@ -105,3 +113,33 @@ class ProjectMemory(Base):
     updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 
     project = relationship("Project", back_populates="memories")
+
+
+class GeneratedOutput(Base):
+    __tablename__ = "generated_outputs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    output_type = Column(String(100), nullable=False, index=True)
+    title = Column(String(500), nullable=False)
+    content = Column(Text, nullable=False)
+    format = Column(String(50), default="markdown")
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+    updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+
+    project = relationship("Project", back_populates="outputs")
+
+
+class Subscription(Base):
+    __tablename__ = "subscriptions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    plan = Column(String(50), nullable=False, default="free")
+    status = Column(String(50), nullable=False, default="active")
+    stripe_subscription_id = Column(String(255), nullable=True)
+    current_period_start = Column(DateTime(timezone=True), nullable=True)
+    current_period_end = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+    updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)

@@ -8,6 +8,12 @@ venv/
 .venv/
 .pytest_cache/
 .coverage
+node_modules/
+.next/
+dist/
+build/
+uploads/
+chroma_db/
 
 # Environment
 .env

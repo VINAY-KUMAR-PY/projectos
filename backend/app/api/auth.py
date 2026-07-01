@@ -34,6 +34,11 @@ def signup(request: UserCreate, db: Session = Depends(get_db)):
     }
 
 
+@router.post("/register")
+def register(request: UserCreate, db: Session = Depends(get_db)):
+    return signup(request, db)
+
+
 @router.post("/login")
 def login(request: UserLogin, db: Session = Depends(get_db)):
     result = authenticate_user(

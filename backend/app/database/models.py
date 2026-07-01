@@ -3,6 +3,8 @@ from app.models.workspace import (
     Project,
     ProjectFile,
     ProjectMemory,
+    GeneratedOutput,
+    Subscription,
     Task,
     Workspace,
 )

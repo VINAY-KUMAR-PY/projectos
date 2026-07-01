@@ -1,5 +1,6 @@
 from app.ai.providers import (
     AIProvider,
+    AnthropicProvider,
     GeminiProvider,
     MockProvider,
     OllamaProvider,
@@ -30,6 +31,12 @@ class ProviderRegistry:
 def create_provider_registry() -> ProviderRegistry:
     registry = ProviderRegistry()
     registry.register(MockProvider(model=settings.ai_model))
+    registry.register(
+        AnthropicProvider(
+            api_key=settings.anthropic_api_key,
+            model=settings.anthropic_model,
+        )
+    )
     registry.register(
         OllamaProvider(base_url=settings.ollama_base_url, model=settings.ollama_model)
     )

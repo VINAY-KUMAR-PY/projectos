@@ -1,4 +1,5 @@
 from app.ai.providers.base import AIProvider
+from app.ai.providers.anthropic import AnthropicProvider
 from app.ai.providers.gemini import GeminiProvider
 from app.ai.providers.mock import MockProvider
 from app.ai.providers.ollama import OllamaProvider
