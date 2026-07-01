@@ -32,6 +32,12 @@ class Settings(BaseSettings):
     upload_dir: str = "./uploads"
     stripe_secret_key: str | None = None
     stripe_webhook_secret: str | None = None
+    razorpay_key_id: str | None = None
+    razorpay_key_secret: str | None = None
+    github_client_id: str | None = None
+    github_client_secret: str | None = None
+    google_client_id: str | None = None
+    google_client_secret: str | None = None
     cloudinary_url: str | None = None
     cors_origins: list[str] = ["http://localhost:3000"]
 

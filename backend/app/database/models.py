@@ -9,3 +9,13 @@ from app.models.workspace import (
     Workspace,
 )
 from app.models.ai import AgentRun, Conversation, ConversationMessage
+from app.models.stage1 import (
+    ApprovalRequest,
+    AuditLog,
+    Comment,
+    MarketplaceItem,
+    TaskAssignment,
+    TeamMember,
+    UsageRecord,
+    UserIntegration,
+)

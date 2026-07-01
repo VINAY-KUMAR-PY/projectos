@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 
 from app.repositories import ai_repository
+from app.models.workspace import ProjectMemory
 
 
 class ConversationMemory:
@@ -34,3 +35,15 @@ class ProjectMemoryConnector:
     def load(self, project_id: int, owner_id: int, limit: int = 20):
         memories = ai_repository.list_project_memories(self.db, project_id, owner_id, limit)
         return [{"key": memory.key, "value": memory.value} for memory in memories]
+
+    def save(self, project_id: int, owner_id: int, key: str, value: str):
+        memory = ProjectMemory(
+            project_id=project_id,
+            owner_id=owner_id,
+            key=key[:120],
+            value=value,
+        )
+        self.db.add(memory)
+        self.db.commit()
+        self.db.refresh(memory)
+        return memory

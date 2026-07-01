@@ -1,7 +1,12 @@
 from fastapi import HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.models.stage1 import TeamMember
+from app.models.user import User
+from app.models.workspace import Project
 from app.repositories import workspace_repository as repo
+from app.services import usage_service
 
 
 def commit_and_refresh(db: Session, entity):
@@ -66,6 +71,9 @@ def delete_workspace(db: Session, workspace_id: int, owner_id: int):
 
 def create_project(db: Session, workspace_id: int, owner_id: int, data):
     get_workspace(db, workspace_id, owner_id)
+    user = db.get(User, owner_id)
+    if user:
+        usage_service.assert_project_limit(db, user)
     project = repo.create_project(
         db,
         workspace_id=workspace_id,
@@ -88,6 +96,16 @@ def list_projects(db, owner_id, workspace_id, search, status, limit, offset):
 
 def get_project(db: Session, project_id: int, owner_id: int):
     project = repo.get_project(db, project_id, owner_id)
+    if not project:
+        project = db.scalar(
+            select(Project)
+            .join(TeamMember, TeamMember.project_id == Project.id)
+            .where(
+                Project.id == project_id,
+                TeamMember.user_id == owner_id,
+                TeamMember.status == "active",
+            )
+        )
     if not project:
         not_found("Project")
     return project

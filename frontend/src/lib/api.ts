@@ -4,6 +4,8 @@ const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 });
 
+export const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 api.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
     const token = localStorage.getItem("token");
@@ -45,6 +47,38 @@ export const outputsApi = {
   list: (projectId: number) => api.get(`/api/outputs/${projectId}`),
   get: (outputId: number) => api.get(`/api/outputs/item/${outputId}`),
   export: (outputId: number, format: string) => api.post(`/api/outputs/${outputId}/export`, { format })
+};
+
+export const generationApi = {
+  document: (projectId: number) => api.post(`/api/projects/${projectId}/generate-document`),
+  ppt: (projectId: number) => api.post(`/api/projects/${projectId}/generate-ppt`),
+  diagram: (projectId: number, type: string) => api.post(`/api/projects/${projectId}/generate-diagram?type=${type}`),
+  code: (projectId: number, data: unknown) => api.post(`/api/projects/${projectId}/build-code`, data),
+  review: (projectId: number) => api.post(`/api/projects/${projectId}/review`, {}),
+  deployment: (projectId: number, target: string) => api.post(`/api/projects/${projectId}/generate-deployment?target=${target}`)
+};
+
+export const collaborationApi = {
+  members: (projectId: number) => api.get(`/api/collaboration/projects/${projectId}/members`),
+  invite: (projectId: number, data: unknown) => api.post(`/api/collaboration/projects/${projectId}/members`, data),
+  comments: (projectId: number) => api.get(`/api/collaboration/projects/${projectId}/comments`),
+  addComment: (projectId: number, data: unknown) => api.post(`/api/collaboration/projects/${projectId}/comments`, data)
+};
+
+export const learningApi = {
+  run: (action: string, projectId: number, message: string) =>
+    api.post(`/api/agents/learning/${action}`, { project_id: projectId, message })
+};
+
+export const marketplaceApi = {
+  list: (search?: string) => api.get(`/api/marketplace${search ? `?search=${encodeURIComponent(search)}` : ""}`),
+  use: (itemId: number) => api.post(`/api/marketplace/${itemId}/use`, {})
+};
+
+export const securityApi = {
+  enable2fa: () => api.post("/api/users/me/2fa/enable"),
+  verify2fa: (code: string) => api.post("/api/users/me/2fa/verify", { code }),
+  exportData: () => api.get("/api/users/me/export")
 };
 
 export const tasksApi = {

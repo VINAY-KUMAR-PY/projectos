@@ -13,6 +13,7 @@ from app.models.user import User
 from app.models.workspace import GeneratedOutput
 from app.repositories.ai_repository import create_agent_run
 from app.schemas.platform_schema import AgentChatRequest, AgentRunAllRequest, AgentRunRequest
+from app.services import usage_service
 from app.services.workspace_service import get_project
 
 router = APIRouter(prefix="/api/agents", tags=["AI Agents"])
@@ -20,6 +21,9 @@ router = APIRouter(prefix="/api/agents", tags=["AI Agents"])
 
 def run_agent_and_persist(db: Session, owner_id: int, project_id: int, agent_type: str, user_input: str):
     project = get_project(db, project_id, owner_id)
+    user = db.get(User, owner_id)
+    if user:
+        usage_service.assert_agent_run_limit(db, user)
     context = {
         "project_id": project.id,
         "title": project.title,
@@ -62,6 +66,8 @@ def run_agent_and_persist(db: Session, owner_id: int, project_id: int, agent_typ
         format="json",
     )
     db.add(generated)
+    usage_service.record_usage(db, owner_id, "agent_run", 1, project.id)
+    usage_service.record_usage(db, owner_id, "generated_output", 1, project.id)
     db.commit()
     db.refresh(run)
     return {"run_id": run.id, "result": result}

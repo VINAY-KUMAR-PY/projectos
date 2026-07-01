@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy import Boolean, Column, Integer, String, DateTime
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from app.database.connection import Base
@@ -13,6 +13,8 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     role = Column(String(50), default="user")
     subscription_plan = Column(String(50), default="free")
+    is_2fa_enabled = Column(Boolean, default=False)
+    totp_secret = Column(String(64), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     workspaces = relationship(

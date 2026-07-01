@@ -14,4 +14,15 @@ class FileVideoAgent(BaseAgent):
 
     def run(self, user_input, context=None):
         output = self.call_ai(user_input, context)
-        return self.standard_response(user_input, output, {"analysis_markdown": output}, ["Save summary", "Create follow-up tasks"])
+        data = {
+            "analysis_markdown": output,
+            "summary": output[:500],
+            "action_items": ["Save extracted insights", "Create follow-up tasks"],
+            "mistakes": ["Review manually when real frame analysis is enabled"],
+            "viva_questions": [
+                "What is the main idea in this file or video?",
+                "Which evidence supports the project outcome?",
+                "What would you improve before final submission?",
+            ],
+        }
+        return self.standard_response(user_input, output, data, ["Save summary", "Create follow-up tasks"])

@@ -5,6 +5,7 @@ const items = [
   ["Projects", "/projects"],
   ["AI Chat", "/ai-chat"],
   ["Files", "/files"],
+  ["Marketplace", "/marketplace"],
   ["Settings", "/settings"],
   ["Subscription", "/settings/subscription"]
 ];

@@ -6,6 +6,8 @@ from app.models.user import User
 from app.schemas.user_schema import UserCreate, UserLogin, UserResponse
 from app.auth.auth_service import create_user, authenticate_user
 from app.auth.dependencies import get_current_user
+from app.repositories.user_repository import get_user_by_email
+from app.services.stage1_service import log_audit
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -21,6 +23,9 @@ def signup(request: UserCreate, db: Session = Depends(get_db)):
 
     if not user:
         raise HTTPException(status_code=400, detail="Email already registered")
+
+    log_audit(db, user.id, "auth.signup", "user", user.id)
+    db.commit()
 
     return {
         "status": "success",
@@ -49,6 +54,10 @@ def login(request: UserLogin, db: Session = Depends(get_db)):
 
     if not result:
         raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    user = get_user_by_email(db, request.email)
+    log_audit(db, user.id if user else None, "auth.login", "user", user.id if user else None)
+    db.commit()
 
     return {
         "status": "success",
