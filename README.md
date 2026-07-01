@@ -10,10 +10,14 @@ ProjectOS is an AI-powered project workspace for students, developers, startup b
 - Mock AI by default for low-cost Stage 1 operation
 - Anthropic, OpenAI, Gemini, and Ollama provider interfaces
 - Eleven standardized AI agent classes routed through the AI core
-- File upload with text extraction fallback
-- Subscription plan APIs for Free, Student, Pro, Team, and Enterprise tiers
+- Universal upload analyzer for text, PDF, DOCX, PPTX, CSV/XLSX, images, and code ZIPs with graceful optional-parser fallbacks
+- Video/audio analysis endpoint with Whisper/OpenCV optional support and mock-safe fallback output
+- Document, PPT, Mermaid diagram, code scaffold, testing review, and deployment config generation APIs
+- Collaboration APIs for team members, comments, task assignments, and output approvals
+- Learning Mode, marketplace, GitHub/Google Drive integration surfaces, 2FA, audit logs, user data export/delete, usage metering, and Razorpay mock billing
+- Subscription plan APIs and usage enforcement for Free, Student, Pro, Team, and Enterprise tiers
 - Dashboard summary API
-- Next.js dashboard scaffold with auth, project workspace, agents, files, tasks, chat, and subscription pages
+- Next.js dashboard scaffold with auth, project workspace, agents, files, code, docs, diagrams, PPT, learning, marketplace, tasks, chat, and subscription pages
 - Alembic migrations, Docker Compose, and GitHub Actions CI
 
 ## Architecture
@@ -64,6 +68,8 @@ Optional AI/video/document integrations are intentionally excluded from the defa
 .venv\Scripts\python -m pip install -r requirements-optional.txt
 ```
 
+Optional packages cover OCR/video/document features such as `pypdf`, `pdfplumber`, `python-docx`, `python-pptx`, `pandas`, `pytesseract`, `openai-whisper`, `opencv-python-headless`, Chroma, LangChain, Stripe, Redis, Celery, and grammar tooling. Tesseract OCR and FFmpeg must be installed at the OS level for full OCR/video processing.
+
 ## Manual Frontend Setup
 
 ```bash
@@ -89,6 +95,9 @@ npm run dev
 | `UPLOAD_DIR` | Local upload path | `./uploads` |
 | `CHROMA_PERSIST_DIR` | Chroma persistence path | `./chroma_db` |
 | `STRIPE_SECRET_KEY` | Stripe integration key | empty |
+| `RAZORPAY_KEY_ID` | Future Razorpay key | empty |
+| `GITHUB_CLIENT_ID` | GitHub OAuth app client id | empty |
+| `GOOGLE_CLIENT_ID` | Google Drive OAuth client id | empty |
 | `CLOUDINARY_URL` | Future object storage config | empty |
 | `NEXT_PUBLIC_API_URL` | Frontend API base URL | `http://localhost:8000` |
 
@@ -114,6 +123,26 @@ npm run dev
 - `/api/tasks`
 - `/api/subscriptions`
 - `/api/dashboard`
+- `/api/projects/{id}/generate-document`
+- `/api/projects/{id}/generate-ppt`
+- `/api/projects/{id}/generate-diagram?type=architecture`
+- `/api/projects/{id}/build-code`
+- `/api/projects/{id}/review`
+- `/api/projects/{id}/generate-deployment?target=railway`
+- `/api/collaboration/*`
+- `/api/agents/learning/{action}`
+- `/api/marketplace`
+- `/api/integrations`
+- `/api/users/me/2fa/*`
+- `/api/users/me/export`
+- `/api/billing/razorpay/create`
+
+## Security Notes
+
+- Uploaded files are validated by extension, size-limited by config, and stored under user/project scoped paths.
+- Mock AI remains the default. Paid providers are only used when explicitly configured.
+- 2FA is opt-in. Development accepts `000000` as a test code; production requires a real TOTP code.
+- Usage metering records agent runs, generated outputs, projects, and storage pressure for plan enforcement.
 
 ## Screenshots
 
