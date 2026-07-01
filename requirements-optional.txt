@@ -1,0 +1,22 @@
+# Optional AI, document, video, OCR, background job, payment, and export integrations.
+# Install only when enabling those feature paths:
+#   pip install -r requirements-optional.txt
+anthropic==0.25.0
+chromadb==0.5.0
+langchain==0.2.0
+langchain-anthropic==0.1.13
+pymupdf==1.24.2
+python-docx==1.1.0
+python-pptx==0.6.23
+openpyxl==3.1.2
+pandas==2.2.1
+pillow==10.3.0
+pytesseract==0.3.10
+openai-whisper==20231117
+opencv-python-headless==4.9.0.80
+stripe==9.6.0
+redis==5.0.4
+celery==5.3.6
+aiofiles==23.2.1
+python-magic==0.4.27
+reportlab==4.1.0

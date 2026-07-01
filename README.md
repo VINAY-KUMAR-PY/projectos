@@ -58,6 +58,12 @@ cd backend
 
 For PowerShell, remove the space in `..\ .venv` if copying the command: `..\.venv\Scripts\python`.
 
+Optional AI/video/document integrations are intentionally excluded from the default backend install. Add them only when enabling those feature paths:
+
+```bash
+.venv\Scripts\python -m pip install -r requirements-optional.txt
+```
+
 ## Manual Frontend Setup
 
 ```bash
