@@ -1,4 +1,5 @@
 from io import BytesIO
+import zipfile
 
 from fastapi.testclient import TestClient
 
@@ -107,6 +108,9 @@ def test_collaboration_learning_marketplace_integrations_security_and_billing(mo
             json={"repo_url": "https://github.com/example/project"},
             headers=headers,
         )
+        github_push = client.post("/api/integrations/github/push-code", headers=headers)
+        drive_import = client.post("/api/integrations/google-drive/import", headers=headers)
+        drive_export = client.post("/api/integrations/google-drive/export", headers=headers)
         twofa = client.post("/api/users/me/2fa/enable", headers=headers)
         verify = client.post("/api/users/me/2fa/verify", json={"code": "000000"}, headers=headers)
         export = client.get("/api/users/me/export", headers=headers)
@@ -123,10 +127,112 @@ def test_collaboration_learning_marketplace_integrations_security_and_billing(mo
     assert integrations.json()["items"][0]["provider"] == "github"
     assert link.json()["provider"] == "github"
     assert github_import.status_code == 200
+    assert github_import.json()["mode"] == "mock"
+    assert github_push.json()["status"] == "mock"
+    assert drive_import.json()["mode"] == "mock"
+    assert drive_export.json()["mode"] == "mock"
     assert twofa.json()["secret"]
     assert verify.json()["enabled"] is True
     assert export.json()["projects"]
     assert billing.json()["provider"] == "razorpay"
+
+
+def test_configured_integrations_require_tokens_and_invalid_repo_is_rejected(monkeypatch, tmp_path):
+    app = fresh_app(monkeypatch, tmp_path)
+
+    with TestClient(app) as client:
+        headers = auth_headers(client, "stage1-integrations@example.com")
+        invalid = client.post("/api/integrations/github/import", json={"repo_url": "https://example.com/project"}, headers=headers)
+        github_link = client.post(
+            "/api/integrations/link",
+            json={"provider": "github", "access_token": "ghp_test_token"},
+            headers=headers,
+        )
+        drive_link = client.post(
+            "/api/integrations/link",
+            json={"provider": "google-drive", "access_token": "drive_test_token"},
+            headers=headers,
+        )
+        linked = client.get("/api/integrations/linked", headers=headers)
+        github_import = client.post(
+            "/api/integrations/github/import",
+            json={"repo_url": "https://github.com/example/project.git"},
+            headers=headers,
+        )
+        github_push = client.post("/api/integrations/github/push-code", headers=headers)
+        drive_import = client.post("/api/integrations/google-drive/import", headers=headers)
+        drive_export = client.post("/api/integrations/google-drive/export", headers=headers)
+
+    assert invalid.status_code == 400
+    assert github_link.json()["configured"] is True
+    assert drive_link.json()["configured"] is True
+    assert "ghp_test_token" not in github_link.text
+    assert "drive_test_token" not in drive_link.text
+    assert "ghp_test_token" not in linked.text
+    assert "drive_test_token" not in linked.text
+    assert github_import.json()["mode"] == "configured"
+    assert github_import.json()["project_id"]
+    assert "token" not in github_push.text.lower()
+    assert github_push.json()["mode"] == "configured"
+    assert drive_import.json()["mode"] == "configured"
+    assert drive_export.json()["mode"] == "configured"
+
+
+def test_review_score_uses_project_data(monkeypatch, tmp_path):
+    app = fresh_app(monkeypatch, tmp_path)
+
+    with TestClient(app) as client:
+        headers = auth_headers(client, "stage1-review@example.com")
+        project_id = create_project(client, headers, "Scored Project")
+        baseline = client.post(f"/api/projects/{project_id}/review", json={}, headers=headers)
+        client.post(
+            f"/api/tasks/{project_id}",
+            json={"title": "Implement tests", "status": "done"},
+            headers=headers,
+        )
+        client.post(
+            f"/api/files/upload/{project_id}",
+            files={"upload": ("README.md", BytesIO(b"# Project\n\nDocumented workflow."), "text/markdown")},
+            headers=headers,
+        )
+        client.post(
+            "/api/outputs",
+            json={"project_id": project_id, "output_type": "document", "title": "Report", "content": "Generated report"},
+            headers=headers,
+        )
+        enriched = client.post(f"/api/projects/{project_id}/review", json={}, headers=headers)
+
+    assert baseline.status_code == 200
+    assert enriched.status_code == 200
+    assert baseline.json()["inputs"]["files"] == 0
+    assert enriched.json()["inputs"]["files"] == 1
+    assert enriched.json()["inputs"]["tasks"] == 1
+    assert enriched.json()["inputs"]["generated_outputs"] >= 1
+    assert enriched.json()["project_improvement_score"] != baseline.json()["project_improvement_score"]
+
+
+def test_optional_file_parser_fallbacks_do_not_crash(tmp_path):
+    from app.utils.file_processing import extract_key_frames, extract_video_transcript, parse_uploaded_file
+
+    docx = tmp_path / "broken.docx"
+    pptx = tmp_path / "broken.pptx"
+    image = tmp_path / "image.png"
+    video = tmp_path / "demo.mp4"
+    archive = tmp_path / "source.zip"
+    for path in [docx, pptx, image, video]:
+        path.write_bytes(b"not a real optional file")
+    with zipfile.ZipFile(archive, "w") as package:
+        package.writestr("package.json", "{}")
+        package.writestr("src/main.py", "print('hello')")
+
+    assert "unavailable" in parse_uploaded_file(str(docx), "application/vnd.openxmlformats-officedocument.wordprocessingml.document")["text"].lower()
+    assert "unavailable" in parse_uploaded_file(str(pptx), "application/vnd.openxmlformats-officedocument.presentationml.presentation")["text"].lower()
+    image_result = parse_uploaded_file(str(image), "image/png")
+    assert image_result["metadata"]["parser"] in {"ocr-unavailable", "pytesseract"}
+    zip_result = parse_uploaded_file(str(archive), "application/zip")
+    assert {"Node.js", "Python"}.issubset(set(zip_result["metadata"]["tech_stack"]))
+    assert extract_video_transcript(str(video))
+    assert isinstance(extract_key_frames(str(video)), list)
 
 
 def test_free_plan_project_limit_returns_upgrade_message(monkeypatch, tmp_path):

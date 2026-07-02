@@ -340,17 +340,52 @@ def review_project(db: Session, project_id: int, user: User, request: ReviewRequ
             source = file_record.extracted_text or parse_uploaded_file(file_record.storage_path, file_record.file_type)["text"]
     if not source:
         source = project_context(db, project)
+    tasks = db.scalars(select(Task).where(Task.project_id == project_id, Task.owner_id == user.id)).all()
+    files = db.scalars(select(ProjectFile).where(ProjectFile.project_id == project_id, ProjectFile.owner_id == user.id)).all()
+    outputs = db.scalars(select(GeneratedOutput).where(GeneratedOutput.project_id == project_id, GeneratedOutput.owner_id == user.id)).all()
+    memories = ProjectMemoryConnector(db).load(project.id, project.owner_id, limit=100)
     issues = _review_text(source)
     hardcoded_secret = bool(re.search(r"(api[_-]?key|secret|password)\s*=\s*['\"][^'\"]+", source, re.I))
-    duplicate_risk = "medium" if len(source) > 2000 and len(set(source.split())) < max(20, len(source.split()) // 4) else "low"
+    words = source.split()
+    duplicate_risk = "medium" if len(source) > 2000 and len(set(words)) < max(20, len(words) // 4) else "low"
+    completed_tasks = sum(1 for task in tasks if task.status in {"done", "complete", "completed"})
+    generated_types = {output.output_type for output in outputs}
+    has_document = any(output_type.startswith("document") or "doc" in output_type for output_type in generated_types)
+    has_presentation = any("ppt" in output_type or "diagram" in output_type for output_type in generated_types)
+    has_code = any(output_type.startswith("code") for output_type in generated_types)
+    high_risk_issue_count = sum(1 for issue in issues if not issue.startswith("No high-risk"))
+    issue_penalty = min(30, high_risk_issue_count * 7)
+    secret_penalty = 15 if hardcoded_secret else 0
+    file_signal = min(18, len(files) * 4)
+    memory_signal = min(16, len(memories) * 2)
+    output_signal = min(18, len(outputs) * 3)
+    task_signal = min(20, len(tasks) * 4)
+    completion_signal = min(20, completed_tasks * 5)
+    source_signal = min(12, len(source) // 600)
+    code_quality = _bounded_score(50 + file_signal + source_signal + (10 if has_code else 0) - issue_penalty - secret_penalty)
+    documentation_completeness = _bounded_score(40 + memory_signal + output_signal + (18 if has_document else 0) + min(10, len(files) * 2))
+    testing_coverage = _bounded_score(35 + task_signal + completion_signal + (12 if "review" in generated_types else 0) + (8 if has_code else 0))
+    presentation_readiness = _bounded_score(35 + (24 if has_presentation else 0) + min(18, len(outputs) * 4) + min(12, len(files) * 3))
+    project_improvement_score = _bounded_score(
+        round((code_quality + documentation_completeness + testing_coverage + presentation_readiness) / 4)
+        - (5 if duplicate_risk == "medium" else 0)
+    )
     scorecard = {
-        "code_quality": 82 - (10 if hardcoded_secret else 0),
-        "documentation_completeness": 78,
-        "testing_coverage": 70,
-        "presentation_readiness": 76,
-        "project_improvement_score": 77 - (8 if hardcoded_secret else 0),
+        "code_quality": code_quality,
+        "documentation_completeness": documentation_completeness,
+        "testing_coverage": testing_coverage,
+        "presentation_readiness": presentation_readiness,
+        "project_improvement_score": project_improvement_score,
         "plagiarism_risk": duplicate_risk,
         "issues": issues,
+        "inputs": {
+            "tasks": len(tasks),
+            "completed_tasks": completed_tasks,
+            "files": len(files),
+            "generated_outputs": len(outputs),
+            "memory_items": len(memories),
+            "source_characters": len(source),
+        },
         "suggestions": [
             "Add automated tests for the most important workflows.",
             "Move secrets into environment variables.",
@@ -558,16 +593,21 @@ def link_integration(db: Session, user: User, request: IntegrationLinkRequest):
     log_audit(db, user.id, "integration.linked", "integration", None, request.provider)
     db.commit()
     db.refresh(integration)
-    return integration
+    return _serialize_integration(integration)
 
 
 def list_integrations(db: Session, user: User):
-    return db.scalars(select(UserIntegration).where(UserIntegration.user_id == user.id).order_by(UserIntegration.id.desc())).all()
+    integrations = db.scalars(select(UserIntegration).where(UserIntegration.user_id == user.id).order_by(UserIntegration.id.desc())).all()
+    return [_serialize_integration(integration) for integration in integrations]
 
 
 def import_repo(db: Session, user: User, request: RepoImportRequest):
+    if not _is_github_repo_url(request.repo_url):
+        raise HTTPException(status_code=400, detail="Only GitHub repository URLs are supported for GitHub import")
     usage_service.assert_project_limit(db, user)
     title = request.repo_url.rstrip("/").split("/")[-1] or "Imported Repository"
+    if title.endswith(".git"):
+        title = title[:-4]
     workspace_id = request.workspace_id
     if workspace_id is None:
         workspace = workspace_service.create_workspace(
@@ -582,10 +622,65 @@ def import_repo(db: Session, user: User, request: RepoImportRequest):
         user.id,
         ProjectApiCreate(title=title, description=f"Imported from {request.repo_url}"),
     )
-    save_memory(db, project.id, project.owner_id, "integration:github_repo", request.repo_url)
-    log_audit(db, user.id, "integration.github_imported", "project", project.id, request.repo_url)
+    mode = _integration_mode(db, user, "github")
+    save_memory(db, project.id, project.owner_id, "integration:github_repo", json.dumps({"repo_url": request.repo_url, "mode": mode}))
+    log_audit(db, user.id, "integration.github_imported", "project", project.id, f"{mode}:{request.repo_url}")
     db.commit()
-    return {"project_id": project.id, "repo_url": request.repo_url}
+    return {
+        "project_id": project.id,
+        "repo_url": request.repo_url,
+        "mode": mode,
+        "message": (
+            "Repository imported in mock mode; no GitHub token was configured."
+            if mode == "mock"
+            else "Repository import recorded with a configured GitHub token."
+        ),
+    }
+
+
+def push_generated_code(db: Session, user: User):
+    mode = _integration_mode(db, user, "github")
+    if mode == "mock":
+        return {
+            "status": "mock",
+            "mode": "mock",
+            "message": "No GitHub token is linked; generated code was not pushed.",
+        }
+    return {
+        "status": "ready",
+        "mode": "configured",
+        "message": "GitHub credentials are configured; push execution is delegated to the deployment worker.",
+    }
+
+
+def import_drive_file(db: Session, user: User):
+    mode = _integration_mode(db, user, "google-drive")
+    if mode == "mock":
+        return {
+            "status": "mock",
+            "mode": "mock",
+            "message": "No Google Drive credentials are linked; no cloud file was imported.",
+        }
+    return {
+        "status": "ready",
+        "mode": "configured",
+        "message": "Google Drive credentials are configured; import can be executed by the file worker.",
+    }
+
+
+def export_drive_file(db: Session, user: User):
+    mode = _integration_mode(db, user, "google-drive")
+    if mode == "mock":
+        return {
+            "status": "mock",
+            "mode": "mock",
+            "message": "No Google Drive credentials are linked; no cloud file was exported.",
+        }
+    return {
+        "status": "ready",
+        "mode": "configured",
+        "message": "Google Drive credentials are configured; export can be executed by the file worker.",
+    }
 
 
 def github_oauth_url():
@@ -752,6 +847,41 @@ def _review_text(source: str) -> list[str]:
     if not issues:
         issues.append("No high-risk static pattern detected.")
     return issues
+
+
+def _bounded_score(value: int | float, minimum: int = 0, maximum: int = 100) -> int:
+    return max(minimum, min(maximum, int(round(value))))
+
+
+def _integration_mode(db: Session, user: User, provider: str) -> str:
+    integration = db.scalar(
+        select(UserIntegration)
+        .where(
+            UserIntegration.user_id == user.id,
+            UserIntegration.provider == provider,
+            UserIntegration.status == "linked",
+            UserIntegration.access_token.is_not(None),
+        )
+        .order_by(UserIntegration.id.desc())
+    )
+    return "configured" if integration else "mock"
+
+
+def _is_github_repo_url(repo_url: str) -> bool:
+    value = repo_url.strip().lower()
+    return value.startswith("https://github.com/") or value.startswith("git@github.com:")
+
+
+def _serialize_integration(integration: UserIntegration) -> dict:
+    return {
+        "id": integration.id,
+        "provider": integration.provider,
+        "external_account_id": integration.external_account_id,
+        "status": integration.status,
+        "configured": bool(integration.access_token),
+        "created_at": integration.created_at,
+        "updated_at": integration.updated_at,
+    }
 
 
 def _zip_dir(source_dir: Path, target: Path):

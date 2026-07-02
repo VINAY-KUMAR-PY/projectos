@@ -95,3 +95,29 @@ def test_api_agents_run_and_history(monkeypatch, tmp_path):
     assert history.json()["items"]
     assert run_detail.json()["id"] == run.json()["run_id"]
     assert chat.status_code == 200
+
+
+def test_testing_agent_scorecard_is_data_derived(monkeypatch, tmp_path):
+    fresh_app(monkeypatch, tmp_path)
+
+    from app.agents.testing_agent import TestingAgent
+
+    agent = TestingAgent()
+    sparse = agent.run("ship it", {"description": "", "memory": ""})["data"]["scorecard"]
+    rich = agent.run(
+        "Create pytest integration tests, documentation, presentation demo, and viva checklist",
+        {
+            "description": "A documented project workflow with setup, report, and demo details." * 6,
+            "memory": "pytest edge cases integration documentation slides demo viva " * 10,
+        },
+    )["data"]["scorecard"]
+
+    assert sparse != rich
+    assert sparse != {
+        "code_quality": 80,
+        "documentation_completeness": 78,
+        "testing_coverage": 70,
+        "presentation_readiness": 76,
+        "project_improvement_score": 77,
+    }
+    assert all(0 <= value <= 100 for value in rich.values())

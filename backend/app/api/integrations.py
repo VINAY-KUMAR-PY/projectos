@@ -62,15 +62,15 @@ def import_github_repo(
 
 
 @router.post("/github/push-code")
-def push_generated_code(current_user: User = Depends(get_current_user)):
-    return {"status": "ready", "message": "GitHub push uses linked OAuth token in production; no cloud call is made in Stage 1 mock mode."}
+def push_generated_code(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return stage1_service.push_generated_code(db, current_user)
 
 
 @router.post("/google-drive/import")
-def import_drive_file(current_user: User = Depends(get_current_user)):
-    return {"status": "ready", "message": "Google Drive import is OAuth-ready; file fetch is enabled when credentials are configured."}
+def import_drive_file(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return stage1_service.import_drive_file(db, current_user)
 
 
 @router.post("/google-drive/export")
-def export_drive_file(current_user: User = Depends(get_current_user)):
-    return {"status": "ready", "message": "Google Drive export is OAuth-ready; upload is enabled when credentials are configured."}
+def export_drive_file(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return stage1_service.export_drive_file(db, current_user)

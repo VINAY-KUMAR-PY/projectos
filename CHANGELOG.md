@@ -1,5 +1,13 @@
 # Changelog
 
+## Stage 1 Verification Hardening
+
+- Wired the global and project file pages to real backend project/file endpoints.
+- Replaced fixed review score values with project-data-derived scoring based on tasks, files, generated outputs, memory, and review findings.
+- Separated GitHub and Google Drive mock/configured integration modes so cloud actions do not report ready status without linked credentials.
+- Sanitized integration API responses so linked access tokens are never returned to clients.
+- Added regression coverage for integration mode behavior, dynamic review scoring, optional parser fallbacks, and legacy testing-agent scorecards.
+
 ## Stage 1 Completion
 
 ### Backend Endpoints Added
