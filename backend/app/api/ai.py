@@ -9,6 +9,7 @@ from app.auth.dependencies import get_current_user
 from app.database.connection import get_db
 from app.models.user import User
 from app.schemas.ai_schema import AIExecuteRequest, AIExecuteResponse
+from app.services.workspace_service import get_owned_project
 
 router = APIRouter(prefix="/ai", tags=["AI Core"])
 
@@ -29,6 +30,8 @@ def execute_ai(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    if request.project_id is not None:
+        get_owned_project(db, request.project_id, current_user.id)
     engine = AgentExecutionEngine(
         db=db,
         ai_manager=create_ai_manager(),

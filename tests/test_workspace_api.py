@@ -170,3 +170,47 @@ def test_workspace_ownership_isolation(monkeypatch, tmp_path):
     assert forbidden_project.status_code == 404
     assert forbidden_child_create.status_code == 404
     assert unauthenticated.status_code == 401
+
+
+def test_shared_project_access_is_read_only_for_viewers(monkeypatch, tmp_path):
+    app = fresh_app(monkeypatch, tmp_path)
+
+    with TestClient(app) as client:
+        owner_headers = auth_headers(client, "share-owner@example.com")
+        viewer_headers = auth_headers(client, "share-viewer@example.com")
+        _, project = create_workspace_and_project(client, owner_headers)
+        invite = client.post(
+            f"/api/collaboration/projects/{project['id']}/members",
+            json={"email": "share-viewer@example.com", "role": "viewer"},
+            headers=owner_headers,
+        )
+        read_project = client.get(f"/api/projects/{project['id']}", headers=viewer_headers)
+        update_project = client.put(
+            f"/api/projects/{project['id']}",
+            json={"status": "done"},
+            headers=viewer_headers,
+        )
+        create_task = client.post(
+            f"/projects/{project['id']}/tasks",
+            json={"title": "viewer write"},
+            headers=viewer_headers,
+        )
+        upload = client.post(
+            f"/api/files/upload/{project['id']}",
+            files={"upload": ("viewer.txt", b"nope", "text/plain")},
+            headers=viewer_headers,
+        )
+        generate = client.post(f"/api/projects/{project['id']}/generate-document", headers=viewer_headers)
+        ai_execute = client.post(
+            "/ai/execute",
+            json={"agent_id": "core_assistant", "project_id": project["id"], "prompt": "write"},
+            headers=viewer_headers,
+        )
+
+    assert invite.status_code == 200
+    assert read_project.status_code == 200
+    assert update_project.status_code == 404
+    assert create_task.status_code == 404
+    assert upload.status_code == 404
+    assert generate.status_code == 404
+    assert ai_execute.status_code == 404

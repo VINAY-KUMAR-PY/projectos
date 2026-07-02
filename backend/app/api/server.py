@@ -36,7 +36,9 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
-    docs_url="/docs",
+    docs_url=None if settings.environment == "production" else "/docs",
+    redoc_url=None if settings.environment == "production" else "/redoc",
+    openapi_url=None if settings.environment == "production" else "/openapi.json",
     lifespan=lifespan,
 )
 app.add_middleware(
@@ -69,7 +71,8 @@ app.include_router(tasks_router)
 app.include_router(subscriptions_router)
 app.include_router(dashboard_router)
 Path(settings.upload_dir).mkdir(parents=True, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=settings.upload_dir), name="uploads")
+if settings.environment != "production":
+    app.mount("/uploads", StaticFiles(directory=settings.upload_dir), name="uploads")
 
 @app.get("/")
 def home():

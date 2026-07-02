@@ -56,7 +56,7 @@ from app.schemas.stage1_schema import (
     TeamInviteRequest,
 )
 from app.services import usage_service
-from app.services.workspace_service import create_project, get_project
+from app.services.workspace_service import create_project, get_owned_project, get_project
 from app.schemas.platform_schema import ProjectApiCreate
 from app.schemas.workspace_schema import WorkspaceCreate
 from app.services import workspace_service
@@ -66,6 +66,7 @@ from app.utils.file_processing import (
     parse_uploaded_file,
     summarize_text,
 )
+from app.utils.secrets import encrypt_secret
 
 
 PLAN_PRICES = {"free": 0, "student": 299, "pro": 499, "team": 999, "enterprise": 4999}
@@ -192,7 +193,7 @@ def analyze_video_file(db: Session, file_id: int, user: User):
 
 
 def generate_document(db: Session, project_id: int, user: User):
-    project = get_project(db, project_id, user.id)
+    project = get_owned_project(db, project_id, user.id)
     usage_service.assert_agent_run_limit(db, user)
     context = project_context(db, project)
     sections = [
@@ -233,7 +234,7 @@ def generate_document(db: Session, project_id: int, user: User):
 
 
 def generate_ppt(db: Session, project_id: int, user: User):
-    project = get_project(db, project_id, user.id)
+    project = get_owned_project(db, project_id, user.id)
     usage_service.assert_agent_run_limit(db, user)
     slide_titles = [
         "Title",
@@ -272,7 +273,7 @@ def generate_ppt(db: Session, project_id: int, user: User):
 
 
 def generate_diagram(db: Session, project_id: int, user: User, diagram_type: str):
-    project = get_project(db, project_id, user.id)
+    project = get_owned_project(db, project_id, user.id)
     usage_service.assert_agent_run_limit(db, user)
     mermaid = _diagram_for(project, diagram_type)
     output = save_generated_output(
@@ -293,7 +294,7 @@ def generate_diagram(db: Session, project_id: int, user: User, diagram_type: str
 
 
 def build_code(db: Session, project_id: int, user: User, request: CodeBuildRequest):
-    project = get_project(db, project_id, user.id)
+    project = get_owned_project(db, project_id, user.id)
     usage_service.assert_agent_run_limit(db, user)
     output_dir = generated_dir(project_id, "code")
     if request.action == "generate":
@@ -313,7 +314,7 @@ def build_code(db: Session, project_id: int, user: User, request: CodeBuildReque
             ensure_ascii=True,
         )
     else:
-        source = _source_from_request(db, request)
+        source = _source_from_request(db, request, project_id, user.id)
         content = json.dumps(
             {
                 "action": request.action,
@@ -332,7 +333,7 @@ def build_code(db: Session, project_id: int, user: User, request: CodeBuildReque
 
 
 def review_project(db: Session, project_id: int, user: User, request: ReviewRequest):
-    project = get_project(db, project_id, user.id)
+    project = get_owned_project(db, project_id, user.id)
     source = ""
     if request.file_id:
         file_record = db.scalar(select(ProjectFile).where(ProjectFile.id == request.file_id, ProjectFile.project_id == project_id))
@@ -400,7 +401,7 @@ def review_project(db: Session, project_id: int, user: User, request: ReviewRequ
 
 
 def generate_deployment(db: Session, project_id: int, user: User, request: DeploymentGenerateRequest):
-    project = get_project(db, project_id, user.id)
+    project = get_owned_project(db, project_id, user.id)
     target = request.target
     configs = {
         "vercel": {"filename": "vercel.json", "content": json.dumps({"buildCommand": "npm run build"}, indent=2)},
@@ -422,7 +423,7 @@ def generate_deployment(db: Session, project_id: int, user: User, request: Deplo
 
 
 def invite_member(db: Session, project_id: int, user: User, request: TeamInviteRequest):
-    project = get_project(db, project_id, user.id)
+    project = get_owned_project(db, project_id, user.id)
     target_user = db.scalar(select(User).where(User.email == request.email))
     member = TeamMember(
         project_id=project.id,
@@ -471,7 +472,7 @@ def list_comments(db: Session, project_id: int, user: User, entity_type: str | N
 
 
 def assign_task(db: Session, project_id: int, user: User, request: TaskAssignRequest):
-    get_project(db, project_id, user.id)
+    get_owned_project(db, project_id, user.id)
     task = db.scalar(select(Task).where(Task.id == request.task_id, Task.project_id == project_id))
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -490,7 +491,7 @@ def assign_task(db: Session, project_id: int, user: User, request: TaskAssignReq
 
 
 def create_approval(db: Session, project_id: int, user: User, request: ApprovalRequestCreate):
-    get_project(db, project_id, user.id)
+    get_owned_project(db, project_id, user.id)
     output = db.scalar(select(GeneratedOutput).where(GeneratedOutput.id == request.output_id, GeneratedOutput.project_id == project_id))
     if not output:
         raise HTTPException(status_code=404, detail="Generated output not found")
@@ -512,7 +513,7 @@ def decide_approval(db: Session, approval_id: int, user: User, request: Approval
     approval = db.scalar(select(ApprovalRequest).where(ApprovalRequest.id == approval_id))
     if not approval:
         raise HTTPException(status_code=404, detail="Approval request not found")
-    get_project(db, approval.project_id, user.id)
+    get_owned_project(db, approval.project_id, user.id)
     approval.status = request.status
     approval.note = request.note or approval.note
     approval.decided_by = user.id
@@ -523,7 +524,7 @@ def decide_approval(db: Session, approval_id: int, user: User, request: Approval
 
 
 def run_learning_action(db: Session, action: str, user: User, request: LearningRequest):
-    project = get_project(db, request.project_id, user.id)
+    project = get_owned_project(db, request.project_id, user.id)
     prompts = {
         "explain_concept": "Explain this concept simply.",
         "generate_quiz": "Create a short quiz with answers.",
@@ -588,7 +589,9 @@ def use_marketplace_item(db: Session, item_id: int, user: User, request: Marketp
 
 
 def link_integration(db: Session, user: User, request: IntegrationLinkRequest):
-    integration = UserIntegration(user_id=user.id, **request.model_dump())
+    values = request.model_dump()
+    values["access_token"] = encrypt_secret(values.get("access_token"))
+    integration = UserIntegration(user_id=user.id, **values)
     db.add(integration)
     log_audit(db, user.id, "integration.linked", "integration", None, request.provider)
     db.commit()
@@ -828,11 +831,18 @@ def _diagram_for(project: Project, diagram_type: str) -> str:
     return f"flowchart TD\n  Idea[\"{title}\"] --> Plan[\"AI Planning\"]\n  Plan --> Build[\"Build\"]\n  Build --> Review[\"Review\"]\n  Review --> Deploy[\"Deploy\"]"
 
 
-def _source_from_request(db: Session, request: CodeBuildRequest) -> str:
+def _source_from_request(db: Session, request: CodeBuildRequest, project_id: int, owner_id: int) -> str:
     if request.file_id:
-        file_record = db.scalar(select(ProjectFile).where(ProjectFile.id == request.file_id))
-        if file_record:
-            return file_record.extracted_text or parse_uploaded_file(file_record.storage_path, file_record.file_type)["text"]
+        file_record = db.scalar(
+            select(ProjectFile).where(
+                ProjectFile.id == request.file_id,
+                ProjectFile.project_id == project_id,
+                ProjectFile.owner_id == owner_id,
+            )
+        )
+        if not file_record:
+            raise HTTPException(status_code=404, detail="File not found")
+        return file_record.extracted_text or parse_uploaded_file(file_record.storage_path, file_record.file_type)["text"]
     return request.prompt or ""
 
 

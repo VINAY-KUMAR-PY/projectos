@@ -12,7 +12,7 @@ router = APIRouter(prefix="/api/tasks", tags=["Tasks"])
 
 @router.post("/generate/{project_id}")
 def generate_tasks(project_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    workspace_service.get_project(db, project_id, current_user.id)
+    workspace_service.get_owned_project(db, project_id, current_user.id)
     return {"status": "success", "message": "Task generation is queued for the AI pipeline", "project_id": project_id}
 
 

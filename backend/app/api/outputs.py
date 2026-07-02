@@ -7,7 +7,7 @@ from app.database.connection import get_db
 from app.models.user import User
 from app.models.workspace import GeneratedOutput
 from app.schemas.platform_schema import OutputCreate, OutputExportRequest
-from app.services.workspace_service import get_project
+from app.services.workspace_service import get_owned_project, get_project
 
 router = APIRouter(prefix="/api/outputs", tags=["Outputs"])
 
@@ -26,7 +26,7 @@ def get_owned_output(db: Session, output_id: int, owner_id: int):
 
 @router.post("", status_code=status.HTTP_201_CREATED)
 def create_output(request: OutputCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    get_project(db, request.project_id, current_user.id)
+    get_owned_project(db, request.project_id, current_user.id)
     output = GeneratedOutput(owner_id=current_user.id, **request.model_dump())
     db.add(output)
     db.commit()

@@ -59,6 +59,10 @@ class Settings(BaseSettings):
             self.auto_create_tables = False
             if self.secret_key == DEFAULT_SECRET_KEY:
                 raise ValueError("SECRET_KEY must be changed in production")
+            if self.database_url.startswith("sqlite"):
+                raise ValueError("DATABASE_URL must use PostgreSQL or another production database in production")
+            if "*" in self.cors_origins:
+                raise ValueError("CORS_ORIGINS cannot include '*' in production")
         return self
 
 

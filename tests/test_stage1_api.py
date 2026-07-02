@@ -1,7 +1,9 @@
 from io import BytesIO
+from pathlib import Path
 import zipfile
 
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
 from conftest import auth_headers, fresh_app
 
@@ -163,6 +165,17 @@ def test_configured_integrations_require_tokens_and_invalid_repo_is_rejected(mon
         drive_import = client.post("/api/integrations/google-drive/import", headers=headers)
         drive_export = client.post("/api/integrations/google-drive/export", headers=headers)
 
+        from app.database.connection import SessionLocal
+        from app.models.stage1 import UserIntegration
+
+        db = SessionLocal()
+        try:
+            stored_github = db.scalar(
+                select(UserIntegration).where(UserIntegration.provider == "github")
+            )
+        finally:
+            db.close()
+
     assert invalid.status_code == 400
     assert github_link.json()["configured"] is True
     assert drive_link.json()["configured"] is True
@@ -170,6 +183,8 @@ def test_configured_integrations_require_tokens_and_invalid_repo_is_rejected(mon
     assert "drive_test_token" not in drive_link.text
     assert "ghp_test_token" not in linked.text
     assert "drive_test_token" not in linked.text
+    assert stored_github.access_token != "ghp_test_token"
+    assert stored_github.access_token.startswith("fernet:")
     assert github_import.json()["mode"] == "configured"
     assert github_import.json()["project_id"]
     assert "token" not in github_push.text.lower()
@@ -211,6 +226,68 @@ def test_review_score_uses_project_data(monkeypatch, tmp_path):
     assert enriched.json()["project_improvement_score"] != baseline.json()["project_improvement_score"]
 
 
+def test_uploads_are_unique_and_deleted_with_record(monkeypatch, tmp_path):
+    app = fresh_app(monkeypatch, tmp_path)
+
+    with TestClient(app) as client:
+        headers = auth_headers(client, "stage1-files@example.com")
+        project_id = create_project(client, headers, "Upload Lifecycle")
+        first = client.post(
+            f"/api/files/upload/{project_id}",
+            files={"upload": ("notes.txt", BytesIO(b"first"), "text/plain")},
+            headers=headers,
+        )
+        second = client.post(
+            f"/api/files/upload/{project_id}",
+            files={"upload": ("notes.txt", BytesIO(b"second"), "text/plain")},
+            headers=headers,
+        )
+        from app.database.connection import SessionLocal
+        from app.models.workspace import ProjectFile
+
+        db = SessionLocal()
+        try:
+            first_record = db.get(ProjectFile, first.json()["id"])
+            second_record = db.get(ProjectFile, second.json()["id"])
+            first_path = Path(first_record.storage_path)
+            second_path = Path(second_record.storage_path)
+        finally:
+            db.close()
+        delete_first = client.delete(f"/api/files/{first.json()['id']}", headers=headers)
+
+    assert first.status_code == 201
+    assert second.status_code == 201
+    assert "storage_path" not in first.json()
+    assert first.json()["file_name"] == "notes.txt"
+    assert second.json()["file_name"] == "notes.txt"
+    assert first_path != second_path
+    assert delete_first.status_code == 204
+    assert not first_path.exists()
+    assert second_path.exists()
+
+
+def test_code_builder_rejects_cross_project_file_ids(monkeypatch, tmp_path):
+    app = fresh_app(monkeypatch, tmp_path)
+
+    with TestClient(app) as client:
+        owner_headers = auth_headers(client, "file-owner@example.com")
+        other_headers = auth_headers(client, "file-other@example.com")
+        owner_project = create_project(client, owner_headers, "Owner Project")
+        other_project = create_project(client, other_headers, "Other Project")
+        upload = client.post(
+            f"/api/files/upload/{owner_project}",
+            files={"upload": ("secret.py", BytesIO(b"api_key = 'abc'"), "text/x-python")},
+            headers=owner_headers,
+        )
+        cross_project = client.post(
+            f"/api/projects/{other_project}/build-code",
+            json={"action": "review", "file_id": upload.json()["id"]},
+            headers=other_headers,
+        )
+
+    assert cross_project.status_code == 404
+
+
 def test_optional_file_parser_fallbacks_do_not_crash(tmp_path):
     from app.utils.file_processing import extract_key_frames, extract_video_transcript, parse_uploaded_file
 
@@ -233,6 +310,23 @@ def test_optional_file_parser_fallbacks_do_not_crash(tmp_path):
     assert {"Node.js", "Python"}.issubset(set(zip_result["metadata"]["tech_stack"]))
     assert extract_video_transcript(str(video))
     assert isinstance(extract_key_frames(str(video)), list)
+
+
+def test_production_settings_fail_closed(monkeypatch, tmp_path):
+    fresh_app(monkeypatch, tmp_path)
+
+    from app.config.settings import Settings
+    import pytest
+
+    with pytest.raises(ValueError):
+        Settings(environment="production", secret_key="real-secret", database_url="sqlite:///prod.db")
+    with pytest.raises(ValueError):
+        Settings(
+            environment="production",
+            secret_key="real-secret",
+            database_url="postgresql://user:pass@localhost/db",
+            cors_origins=["*"],
+        )
 
 
 def test_free_plan_project_limit_returns_upgrade_message(monkeypatch, tmp_path):

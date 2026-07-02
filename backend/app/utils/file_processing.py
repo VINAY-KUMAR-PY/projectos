@@ -289,15 +289,18 @@ def _parse_image(path: Path, metadata: dict) -> tuple[str, dict, str]:
 def _parse_zip(path: Path, metadata: dict) -> tuple[str, dict, str]:
     extracted = []
     file_tree = []
-    with zipfile.ZipFile(path, "r") as archive:
-        for name in archive.namelist():
-            if name.endswith("/"):
-                continue
-            file_tree.append(name)
-            if Path(name).suffix.lower() in CODE_EXTENSIONS:
-                with archive.open(name) as item:
-                    content = item.read().decode("utf-8", errors="ignore")
-                    extracted.append(f"=== {name} ===\n{content[:5000]}")
+    try:
+        with zipfile.ZipFile(path, "r") as archive:
+            for name in archive.namelist():
+                if name.endswith("/"):
+                    continue
+                file_tree.append(name)
+                if Path(name).suffix.lower() in CODE_EXTENSIONS:
+                    with archive.open(name) as item:
+                        content = item.read().decode("utf-8", errors="ignore")
+                        extracted.append(f"=== {name} ===\n{content[:5000]}")
+    except zipfile.BadZipFile as exc:
+        return f"[ZIP extraction unavailable: {exc}]", metadata, "zip-unavailable"
     metadata["file_tree"] = file_tree[:500]
     metadata["file_count"] = len(file_tree)
     metadata["tech_stack"] = detect_tech_stack(file_tree)

@@ -1,7 +1,10 @@
+from pathlib import Path
+
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.config.settings import settings
 from app.models.stage1 import TeamMember
 from app.models.user import User
 from app.models.workspace import Project
@@ -111,20 +114,27 @@ def get_project(db: Session, project_id: int, owner_id: int):
     return project
 
 
+def get_owned_project(db: Session, project_id: int, owner_id: int):
+    project = repo.get_project(db, project_id, owner_id)
+    if not project:
+        not_found("Project")
+    return project
+
+
 def update_project(db: Session, project_id: int, owner_id: int, data):
-    project = get_project(db, project_id, owner_id)
+    project = get_owned_project(db, project_id, owner_id)
     apply_updates(project, data.model_dump(exclude_unset=True))
     return commit_and_refresh(db, project)
 
 
 def delete_project(db: Session, project_id: int, owner_id: int):
-    project = get_project(db, project_id, owner_id)
+    project = get_owned_project(db, project_id, owner_id)
     db.delete(project)
     db.commit()
 
 
 def create_task(db, project_id, owner_id, data):
-    get_project(db, project_id, owner_id)
+    get_owned_project(db, project_id, owner_id)
     task = repo.create_task(db, project_id, owner_id, **data.model_dump())
     return commit_and_refresh(db, task)
 
@@ -155,7 +165,7 @@ def delete_task(db, task_id, owner_id):
 
 
 def create_note(db, project_id, owner_id, data):
-    get_project(db, project_id, owner_id)
+    get_owned_project(db, project_id, owner_id)
     note = repo.create_note(db, project_id, owner_id, **data.model_dump())
     return commit_and_refresh(db, note)
 
@@ -186,7 +196,7 @@ def delete_note(db, note_id, owner_id):
 
 
 def create_file(db, project_id, owner_id, data):
-    get_project(db, project_id, owner_id)
+    get_owned_project(db, project_id, owner_id)
     file_record = repo.create_file(db, project_id, owner_id, **data.model_dump())
     return commit_and_refresh(db, file_record)
 
@@ -214,12 +224,13 @@ def update_file(db, file_id, owner_id, data):
 
 def delete_file(db, file_id, owner_id):
     file_record = get_file(db, file_id, owner_id)
+    delete_owned_upload(file_record.storage_path)
     db.delete(file_record)
     db.commit()
 
 
 def create_memory(db, project_id, owner_id, data):
-    get_project(db, project_id, owner_id)
+    get_owned_project(db, project_id, owner_id)
     memory = repo.create_memory(db, project_id, owner_id, **data.model_dump())
     return commit_and_refresh(db, memory)
 
@@ -247,3 +258,13 @@ def delete_memory(db, memory_id, owner_id):
     memory = get_memory(db, memory_id, owner_id)
     db.delete(memory)
     db.commit()
+
+
+def delete_owned_upload(storage_path: str | None):
+    if not storage_path:
+        return
+    upload_root = Path(settings.upload_dir).resolve()
+    target = Path(storage_path).resolve()
+    if upload_root == target or upload_root not in target.parents:
+        return
+    target.unlink(missing_ok=True)

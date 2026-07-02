@@ -14,13 +14,13 @@ from app.models.workspace import GeneratedOutput
 from app.repositories.ai_repository import create_agent_run
 from app.schemas.platform_schema import AgentChatRequest, AgentRunAllRequest, AgentRunRequest
 from app.services import usage_service
-from app.services.workspace_service import get_project
+from app.services.workspace_service import get_owned_project, get_project
 
 router = APIRouter(prefix="/api/agents", tags=["AI Agents"])
 
 
 def run_agent_and_persist(db: Session, owner_id: int, project_id: int, agent_type: str, user_input: str):
-    project = get_project(db, project_id, owner_id)
+    project = get_owned_project(db, project_id, owner_id)
     user = db.get(User, owner_id)
     if user:
         usage_service.assert_agent_run_limit(db, user)
